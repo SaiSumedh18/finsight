@@ -1,0 +1,80 @@
+name: FinSight CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    name: Test and Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+
+        env:
+          POSTGRES_USER: finsight
+          POSTGRES_PASSWORD: finsight_password
+          POSTGRES_DB: finsight_test
+
+        ports:
+          - 5434:5432
+
+        options: >-
+          --health-cmd="pg_isready -U finsight -d finsight_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Initialize test database
+        working-directory: server
+        env:
+          PGPASSWORD: finsight_password
+        run: |
+          psql \
+            -h 127.0.0.1 \
+            -p 5434 \
+            -U finsight \
+            -d finsight_test \
+            -f sql/schema.sql
+
+      - name: Run API tests
+        working-directory: server
+        run: npx vitest run
+
+      - name: Build backend
+        working-directory: server
+        run: npm run build
+
+      - name: Install frontend dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: client
+        env:
+          VITE_API_URL: http://localhost:4100/api
+        run: npm run build
