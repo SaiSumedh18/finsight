@@ -10,6 +10,15 @@ export default defineConfig({
             "./tests/setup.ts",
         ],
 
+        include: [
+            "tests/**/*.test.ts",
+        ],
+
+        exclude: [
+            "dist/**",
+            "node_modules/**",
+        ],
+
         fileParallelism: false,
 
         testTimeout: 10000,

@@ -8,6 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:init": "node scripts/init-db.mjs",
     "build": "tsc",
     "start": "node dist/src/index.js"
   },

@@ -1,11 +1,17 @@
 import "dotenv/config";
 
-import { app } from "./app.js";
-import { pool } from "./config/db.js";
+import {
+    app,
+} from "./app.js";
+
+import {
+    pool,
+} from "./config/db.js";
 
 const PORT =
-    Number(process.env.PORT) ||
-    4100;
+    Number(
+        process.env.PORT
+    ) || 4100;
 
 async function startServer() {
     try {
@@ -19,9 +25,10 @@ async function startServer() {
 
         app.listen(
             PORT,
+            "0.0.0.0",
             () => {
                 console.log(
-                    `FinSight API running on http://localhost:${PORT}`
+                    `FinSight API running on port ${PORT}`
                 );
             }
         );

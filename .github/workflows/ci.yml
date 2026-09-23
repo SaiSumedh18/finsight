@@ -63,7 +63,7 @@ jobs:
 
       - name: Run API tests
         working-directory: server
-        run: npx vitest run
+        run: npm test
 
       - name: Build backend
         working-directory: server
@@ -78,3 +78,16 @@ jobs:
         env:
           VITE_API_URL: http://localhost:4100/api
         run: npm run build
+
+      - name: Build backend Docker image
+        run: |
+          docker build \
+            -t finsight-backend-ci \
+            ./server
+
+      - name: Build frontend Docker image
+        run: |
+          docker build \
+            --build-arg VITE_API_URL=/api \
+            -t finsight-frontend-ci \
+            ./client
