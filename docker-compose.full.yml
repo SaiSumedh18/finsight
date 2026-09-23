@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: finsight-full-postgres
+
+    environment:
+      POSTGRES_USER: finsight
+      POSTGRES_PASSWORD: finsight_password
+      POSTGRES_DB: finsight
+
+    ports:
+      - "5435:5432"
+
+    volumes:
+      - finsight_full_postgres_data:/var/lib/postgresql/data
+      - ./server/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U finsight -d finsight" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./server
+
+    container_name: finsight-full-backend
+
+    environment:
+      PORT: 4100
+      DATABASE_URL: postgresql://finsight:finsight_password@postgres:5432/finsight
+      JWT_SECRET: docker-local-development-secret-change-for-production
+      JWT_EXPIRES_IN: 7d
+      CLIENT_URL: http://localhost:8080
+
+    ports:
+      - "4101:4100"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./client
+
+      args:
+        VITE_API_URL: /api
+
+    container_name: finsight-full-frontend
+
+    ports:
+      - "8080:80"
+
+    depends_on:
+      - backend
+
+    restart: unless-stopped
+
+volumes:
+  finsight_full_postgres_data:
