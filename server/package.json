@@ -10,14 +10,19 @@
     "test:watch": "vitest",
     "db:init": "node scripts/init-db.mjs",
     "build": "tsc",
-    "start": "node dist/src/index.js"
+    "start": "node dist/src/index.js",
+    "worker": "node dist/src/worker.js",
+    "worker:dev": "tsx src/worker.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "bullmq": "^6.3.11",
     "cors": "^2.8.6",
+    "csv-parse": "^7.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "zod": "^4.6.5"

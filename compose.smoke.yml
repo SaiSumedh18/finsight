@@ -1,0 +1,87 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+
+    environment:
+      POSTGRES_USER: finsight
+      POSTGRES_PASSWORD: finsight_password
+      POSTGRES_DB: finsight
+
+    ports:
+      - "127.0.0.1:5496:5432"
+
+    volumes:
+      - finsight_full_postgres_data:/var/lib/postgresql/data
+      - ./server/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U finsight -d finsight" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, "yes", --maxmemory-policy, noeviction]
+    volumes: ["finsight_redis_data:/data"]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      retries: 10
+
+  worker:
+    build: ./server
+    command: [node, dist/src/worker.js]
+    environment:
+      DATABASE_URL: postgresql://finsight:finsight_password@postgres:5432/finsight
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./server
+
+
+    environment:
+      REDIS_URL: redis://redis:6379
+      PORT: 4100
+      DATABASE_URL: postgresql://finsight:finsight_password@postgres:5432/finsight
+      JWT_SECRET: docker-local-development-secret-change-for-production
+      JWT_EXPIRES_IN: 7d
+      CLIENT_URL: http://localhost:8091
+
+    ports:
+      - "127.0.0.1:4193:4100"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./client
+
+      args:
+        VITE_API_URL: /api
+
+
+    ports:
+      - "127.0.0.1:8091:80"
+
+    depends_on:
+      - backend
+
+    restart: unless-stopped
+
+volumes:
+  finsight_full_postgres_data:
+  finsight_redis_data:

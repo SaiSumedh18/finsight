@@ -1,0 +1,31 @@
+{
+  "family": "finsight",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "REPLACE_WITH_EXECUTION_ROLE_ARN",
+  "taskRoleArn": "REPLACE_WITH_TASK_ROLE_ARN",
+  "containerDefinitions": [
+    {
+      "name": "api", "image": "REPLACE_WITH_ECR_IMAGE_DIGEST", "essential": true,
+      "portMappings": [{"containerPort": 4100,"protocol": "tcp"}],
+      "environment": [{"name": "PORT","value": "4100"},{"name": "CLIENT_URL","value": "REPLACE_WITH_HTTPS_FRONTEND_ORIGIN"}],
+      "secrets": [
+        {"name": "DATABASE_URL","valueFrom": "REPLACE_WITH_RDS_CONNECTION_SECRET_ARN"},
+        {"name": "REDIS_URL","valueFrom": "REPLACE_WITH_ELASTICACHE_TLS_URL_SECRET_ARN"},
+        {"name": "JWT_SECRET","valueFrom": "REPLACE_WITH_JWT_SECRET_ARN"}
+      ],
+      "logConfiguration": {"logDriver": "awslogs","options": {"awslogs-group": "/ecs/finsight","awslogs-region": "REPLACE_WITH_REGION","awslogs-stream-prefix": "api"}}
+    },
+    {
+      "name": "worker", "image": "REPLACE_WITH_ECR_IMAGE_DIGEST", "essential": true,
+      "command": ["node","dist/src/worker.js"],
+      "secrets": [
+        {"name": "DATABASE_URL","valueFrom": "REPLACE_WITH_RDS_CONNECTION_SECRET_ARN"},
+        {"name": "REDIS_URL","valueFrom": "REPLACE_WITH_ELASTICACHE_TLS_URL_SECRET_ARN"}
+      ],
+      "logConfiguration": {"logDriver": "awslogs","options": {"awslogs-group": "/ecs/finsight","awslogs-region": "REPLACE_WITH_REGION","awslogs-stream-prefix": "worker"}}
+    }
+  ]
+}

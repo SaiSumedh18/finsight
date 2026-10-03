@@ -13,7 +13,7 @@ import {
 
 import {
     useAuth,
-} from "../context/AuthContext";
+} from "../context/useAuth";
 
 export default function LoginPage() {
     const {

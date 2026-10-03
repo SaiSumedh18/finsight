@@ -44,7 +44,7 @@ const dateSchema =
             "Invalid transaction date"
         );
 
-const createTransactionSchema =
+export const createTransactionSchema =
     z.object({
         accountId: z
             .number()

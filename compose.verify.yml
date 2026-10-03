@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: finsight
+      POSTGRES_PASSWORD: local-test-only
+      POSTGRES_DB: finsight_test
+    ports: ["127.0.0.1:5491:5432"]
+    volumes:
+      - ./server/sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U finsight -d finsight_test]
+      interval: 2s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --maxmemory-policy, noeviction]
+    ports: ["127.0.0.1:6391:6379"]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      retries: 30

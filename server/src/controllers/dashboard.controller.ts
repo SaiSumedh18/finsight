@@ -1,3 +1,4 @@
+import { dashboardCacheKey, cachedSummary, storeSummary } from '../services/cache.js';
 import type {
     Response,
 } from "express";
@@ -65,6 +66,10 @@ export async function getDashboardSummary(
         validation.data;
 
     try {
+        const cacheKey = await dashboardCacheKey(req.userId!, monthStart);
+        const cached = await cachedSummary(cacheKey);
+        if (cached) { res.setHeader("X-Cache", "HIT"); return res.json(cached); }
+        res.setHeader("X-Cache", "MISS");
         const [
             balanceResult,
             monthResult,
@@ -433,7 +438,7 @@ export async function getDashboardSummary(
         const expenses =
             month.expenses ?? 0;
 
-        return res.json({
+        const payload = {
             success: true,
 
             month:
@@ -489,7 +494,9 @@ export async function getDashboardSummary(
 
             monthlyTrend:
                 trendResult.rows,
-        });
+        };
+        await storeSummary(cacheKey, payload);
+        return res.json(payload);
     } catch (error) {
         console.error(
             "Dashboard summary error:",

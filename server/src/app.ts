@@ -1,3 +1,4 @@
+import importRoutes from './routes/import.routes.js';
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -33,7 +34,7 @@ app.use(
 );
 
 app.use(
-    express.json()
+    express.json({ limit: "3mb" })
 );
 
 app.get(
@@ -76,3 +77,4 @@ app.use(
     "/api/dashboard",
     dashboardRoutes
 );
+app.use("/api/imports", importRoutes);

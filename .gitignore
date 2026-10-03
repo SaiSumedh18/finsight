@@ -28,3 +28,5 @@ npm-debug.log*
 
 # Coverage
 coverage/
+# Temporary local benchmark credentials
+benchmarks/*.token

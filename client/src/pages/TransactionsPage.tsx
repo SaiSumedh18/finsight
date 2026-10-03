@@ -1,3 +1,4 @@
+import CsvImport from "../components/CsvImport";
 import {
     useEffect,
     useMemo,
@@ -677,6 +678,7 @@ export default function TransactionsPage() {
 
     return (
         <main className="transactions-page">
+            <CsvImport />
             <header className="transactions-topbar">
                 <div>
                     <Link

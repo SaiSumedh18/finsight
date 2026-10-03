@@ -128,3 +128,40 @@ ON budgets(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_budgets_month
 ON budgets(month_start);
+-- Transactional cache invalidation, including direct SQL writes and cascades.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS dashboard_version BIGINT NOT NULL DEFAULT 0;
+CREATE OR REPLACE FUNCTION bump_dashboard_version() RETURNS trigger AS $$
+DECLARE old_user integer; new_user integer;
+BEGIN
+  IF TG_TABLE_NAME = 'transactions' THEN
+    IF TG_OP <> 'INSERT' THEN SELECT user_id INTO old_user FROM accounts WHERE id=OLD.account_id; END IF;
+    IF TG_OP <> 'DELETE' THEN SELECT user_id INTO new_user FROM accounts WHERE id=NEW.account_id; END IF;
+  ELSE
+    IF TG_OP <> 'INSERT' THEN old_user := OLD.user_id; END IF;
+    IF TG_OP <> 'DELETE' THEN new_user := NEW.user_id; END IF;
+  END IF;
+  UPDATE users SET dashboard_version=dashboard_version+1 WHERE id=old_user OR id=new_user;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+DO $$ DECLARE t text; BEGIN
+  FOREACH t IN ARRAY ARRAY['accounts','categories','budgets','transactions'] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS dashboard_changed ON %I', t);
+    EXECUTE format('CREATE TRIGGER dashboard_changed AFTER INSERT OR UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION bump_dashboard_version()', t);
+  END LOOP;
+END $$;
+
+CREATE TABLE IF NOT EXISTS transaction_imports (
+  id UUID PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  idempotency_key VARCHAR(128) NOT NULL,
+  content_hash TEXT NOT NULL,
+  csv TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed','failed')),
+  row_count INTEGER NOT NULL DEFAULT 0,
+  error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ,
+  UNIQUE(user_id, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS idx_import_pending ON transaction_imports(created_at) WHERE status='pending';

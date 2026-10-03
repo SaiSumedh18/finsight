@@ -21,6 +21,28 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, "yes", --maxmemory-policy, noeviction]
+    volumes: ["finsight_redis_data:/data"]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      retries: 10
+
+  worker:
+    build: ./server
+    command: [node, dist/src/worker.js]
+    environment:
+      DATABASE_URL: postgresql://finsight:finsight_password@postgres:5432/finsight
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   backend:
     build:
       context: ./server
@@ -28,6 +50,7 @@ services:
     container_name: finsight-full-backend
 
     environment:
+      REDIS_URL: redis://redis:6379
       PORT: 4100
       DATABASE_URL: postgresql://finsight:finsight_password@postgres:5432/finsight
       JWT_SECRET: docker-local-development-secret-change-for-production
@@ -39,6 +62,8 @@ services:
 
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
     restart: unless-stopped
@@ -62,3 +87,4 @@ services:
 
 volumes:
   finsight_full_postgres_data:
+  finsight_redis_data:

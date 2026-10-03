@@ -8,7 +8,7 @@ import {
 
 import {
     useAuth,
-} from "../context/AuthContext";
+} from "../context/useAuth";
 
 interface ProtectedRouteProps {
     children: ReactNode;
