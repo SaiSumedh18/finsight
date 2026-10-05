@@ -1,5 +1,6 @@
 import importRoutes from './routes/import.routes.js';
 import express from "express";
+import { resolve } from "node:path";
 import cors from "cors";
 import helmet from "helmet";
 
@@ -78,3 +79,11 @@ app.use(
     dashboardRoutes
 );
 app.use("/api/imports", importRoutes);
+
+// Optional same-origin web bundle for the free public demo.
+if (process.env.STATIC_DIR) {
+    const directory = resolve(process.env.STATIC_DIR);
+    app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint not found' }));
+    app.use(express.static(directory));
+    app.get('/{*path}', (_req, res) => res.sendFile(resolve(directory, 'index.html')));
+}

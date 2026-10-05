@@ -1,0 +1,20 @@
+FROM node:24-alpine AS build
+WORKDIR /app/client
+COPY client/package*.json ./
+RUN npm ci
+COPY client/ ./
+ENV VITE_API_URL=/api
+RUN npm run build
+WORKDIR /app/server
+COPY server/package*.json ./
+RUN npm ci
+COPY server/ ./
+RUN npm run build && npm prune --omit=dev
+FROM node:24-alpine
+ENV NODE_ENV=production STATIC_DIR=/app/client/dist RUN_IMPORT_WORKER=true
+WORKDIR /app/server
+COPY --from=build /app/server ./
+COPY --from=build /app/client/dist /app/client/dist
+USER node
+EXPOSE 4100
+CMD ["sh", "-c", "npm run db:init && node dist/src/index.js"]

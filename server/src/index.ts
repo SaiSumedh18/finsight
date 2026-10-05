@@ -8,6 +8,9 @@ import {
     pool,
 } from "./config/db.js";
 
+import { startImportWorker } from "./jobs/imports.js";
+import { redis } from "./services/cache.js";
+
 const PORT =
     Number(
         process.env.PORT
@@ -23,7 +26,8 @@ async function startServer() {
             "PostgreSQL connected successfully"
         );
 
-        app.listen(
+        const stopWorker = process.env.RUN_IMPORT_WORKER === "true" ? startImportWorker() : undefined;
+        const server = app.listen(
             PORT,
             "0.0.0.0",
             () => {
@@ -32,6 +36,17 @@ async function startServer() {
                 );
             }
         );
+        for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
+            const deadline = setTimeout(() => process.exit(1), 25000);
+            deadline.unref();
+            server.close(async () => {
+                await stopWorker?.();
+                redis?.disconnect();
+                await pool.end();
+                clearTimeout(deadline);
+                process.exit(0);
+            });
+        });
     } catch (error) {
         console.error(
             "Unable to start FinSight:",
