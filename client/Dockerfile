@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM public.ecr.aws/docker/library/node:24-alpine AS build
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY . .
 RUN npm run build
 
 
-FROM nginx:1.27-alpine AS production
+FROM public.ecr.aws/docker/library/nginx:1.27-alpine AS production
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

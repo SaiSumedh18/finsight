@@ -1,6 +1,8 @@
 import CsvImport from "../components/CsvImport";
 import {
     useEffect,
+    useCallback,
+    useRef,
     useMemo,
     useState,
     type FormEvent,
@@ -235,47 +237,12 @@ export default function TransactionsPage() {
             ]
         );
 
-    async function loadReferenceData() {
-        const [
-            accountResponse,
-            categoryResponse,
-        ] =
-            await Promise.all([
-                api.get(
-                    "/accounts"
-                ),
+    const [referenceError, setReferenceError] = useState("");
+    const loadSequence = useRef(0);
 
-                api.get(
-                    "/categories"
-                ),
-            ]);
-
-        setAccounts(
-            accountResponse
-                .data
-                .accounts
-        );
-
-        setCategories(
-            categoryResponse
-                .data
-                .categories
-        );
-
-        return {
-            loadedAccounts:
-                accountResponse
-                    .data
-                    .accounts as Account[],
-
-            loadedCategories:
-                categoryResponse
-                    .data
-                    .categories as Category[],
-        };
-    }
-
-    async function loadTransactions() {
+    const loadTransactions = useCallback(async () => {
+        const requestId = ++loadSequence.current;
+        setError("");
         try {
             const params: Record<
                 string,
@@ -326,64 +293,49 @@ export default function TransactionsPage() {
                     }
                 );
 
+            if (requestId !== loadSequence.current) return;
+
             setTransactions(
                 response
                     .data
                     .transactions
             );
         } catch {
+            if (requestId !== loadSequence.current) return;
             setError(
                 "Unable to load transactions."
             );
         }
-    }
+    }, [search, typeFilter, accountFilter, categoryFilter, startDate, endDate]);
 
     useEffect(() => {
+        let active = true;
         async function initialize() {
-            setLoading(true);
-            setError("");
-
             try {
-                await loadReferenceData();
-                await loadTransactions();
+                const [accountResponse, categoryResponse] = await Promise.all([
+                    api.get("/accounts"), api.get("/categories"),
+                ]);
+                if (!active) return;
+                setAccounts(accountResponse.data.accounts);
+                setCategories(categoryResponse.data.categories);
             } catch {
-                setError(
-                    "Unable to load transaction data."
-                );
+                if (active) setReferenceError("Unable to load transaction reference data. Please reload this page.");
             } finally {
-                setLoading(false);
+                if (active) setLoading(false);
             }
         }
-
-        initialize();
+        void initialize();
+        return () => { active = false; };
     }, []);
 
     useEffect(() => {
-        if (loading) {
-            return;
-        }
-
-        const timer =
-            window.setTimeout(
-                () => {
-                    loadTransactions();
-                },
-                250
-            );
-
+        if (loading) return;
+        const timer = window.setTimeout(() => { void loadTransactions(); }, 250);
         return () => {
-            window.clearTimeout(
-                timer
-            );
+            window.clearTimeout(timer);
+            loadSequence.current += 1;
         };
-    }, [
-        search,
-        typeFilter,
-        accountFilter,
-        categoryFilter,
-        startDate,
-        endDate,
-    ]);
+    }, [loading, loadTransactions]);
 
     function openCreateModal() {
         const defaultType:
@@ -713,9 +665,9 @@ export default function TransactionsPage() {
                 </button>
             </header>
 
-            {error && (
+            {(error || referenceError) && (
                 <div className="error-banner transactions-error">
-                    {error}
+                    {error || referenceError}
                 </div>
             )}
 

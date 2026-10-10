@@ -1,5 +1,7 @@
 import {
     useEffect,
+    useCallback,
+    useRef,
     useMemo,
     useState,
     type FormEvent,
@@ -218,7 +220,10 @@ export default function BudgetsPage() {
         totalBudget -
         totalSpent;
 
-    async function loadData() {
+    const loadSequence = useRef(0);
+
+    const loadData = useCallback(async () => {
+        const requestId = ++loadSequence.current;
         setError("");
 
         try {
@@ -242,6 +247,8 @@ export default function BudgetsPage() {
                     ),
                 ]);
 
+            if (requestId !== loadSequence.current) return;
+
             setBudgets(
                 budgetResponse
                     .data
@@ -254,25 +261,26 @@ export default function BudgetsPage() {
                     .categories
             );
         } catch {
+            if (requestId !== loadSequence.current) return;
             setError(
                 "Unable to load budget data."
             );
         }
-    }
+    }, [selectedMonth]);
 
     useEffect(() => {
+        let active = true;
         async function initialize() {
             setLoading(true);
-
             await loadData();
-
-            setLoading(false);
+            if (active) setLoading(false);
         }
-
-        initialize();
-    }, [
-        selectedMonth,
-    ]);
+        void initialize();
+        return () => {
+            active = false;
+            loadSequence.current += 1;
+        };
+    }, [loadData]);
 
     function openCreateModal() {
         if (
